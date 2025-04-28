@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.HashSet;
+
 
 @Component
 @RequiredArgsConstructor
@@ -50,7 +53,7 @@ public class OAuth2LoginSuccessHandler extends SavedRequestAwareAuthenticationSu
     
     
     public OAuth2LoginSuccessHandler(UserService userService, JwtUtils jwtUtils) {
-		super();
+		//super();
 		this.userService = userService;
 		this.jwtUtils = jwtUtils;
 	}
@@ -123,6 +126,14 @@ public class OAuth2LoginSuccessHandler extends SavedRequestAwareAuthenticationSu
         // Extract necessary attributes
         String email = (String) attributes.get("email");
         System.out.println("OAuth2LoginSuccessHandler: " + username + " : " + email);
+        
+        
+        Set<SimpleGrantedAuthority> authorities =new HashSet<>(oauth2User.getAuthorities().stream()
+        		.map(authority -> new SimpleGrantedAuthority(authority.getAuthority()))
+                .collect(Collectors.toList()));
+        
+        User user=userService.findByEmail(email).orElseThrow(()->new RuntimeException("User not found"));
+        authorities.add(new SimpleGrantedAuthority(user.getRole().getRoleName().name()));
 
         // Create UserDetailsImpl instance
         UserDetailsImpl userDetails = new UserDetailsImpl(
@@ -131,9 +142,7 @@ public class OAuth2LoginSuccessHandler extends SavedRequestAwareAuthenticationSu
                 email,
                 null,
                 false,
-                oauth2User.getAuthorities().stream()
-                        .map(authority -> new SimpleGrantedAuthority(authority.getAuthority()))
-                        .collect(Collectors.toList())
+                authorities
         );
 
         // Generate JWT token
